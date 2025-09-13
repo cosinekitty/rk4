@@ -1,5 +1,7 @@
 #include <cstdio>
 #include <cstring>
+#include <cmath>
+#include "rk4_integrator.hpp"
 
 using test_func_t = int (*)();
 
@@ -10,12 +12,12 @@ struct Test
 };
 
 
-static int Happy();
+static int Logarithm();
 
 
 static Test TestList[] =
 {
-    { "happy", Happy }
+    { "log", Logarithm }
 };
 
 
@@ -75,8 +77,32 @@ int main(int argc, const char *argv[])
 }
 
 
-static int Happy()
+static int Logarithm()
 {
-    printf("HAPPY!\n");
+    // Use the numerical integrator to estimate ln(2).
+    // Let t be the independent variable that ranges [1, 2].
+    // Let v = 1/t be the "velocity" or slope.
+    // Let x = integral(v) be the "position" or integral of v over the range t=1 to t=2.
+    CosineKitty::Integrator<double, double> integ([](double t, const double& x){return 1.0 / t;});
+
+    const int nSteps = 1000;
+    const double dt = 1.0 / nSteps;
+    for (int n = 0; n < nSteps; ++n)
+        integ.step(dt*n, dt);
+
+    const double correct = std::log(2.0);
+    const double diff = std::abs(correct - integ.state);
+    const double tolerance = 1.0e-6;
+    printf("Integral = %0.16lf\n", integ.state);
+    printf("Correct  = %0.16lf\n", correct);
+    printf("Diff     = %g\n", diff);
+
+    if (diff > tolerance)
+    {
+        printf("Logarithm: EXCESSIVE ERROR\n");
+        return 1;
+    }
+
+    printf("Logarithm: PASS\n");
     return 0;
 }
