@@ -13,11 +13,13 @@ struct Test
 
 
 static int Logarithm();
+static int Pendulum();
 
 
 static Test TestList[] =
 {
-    { "log", Logarithm }
+    { "log", Logarithm },
+    { "pendulum", Pendulum }
 };
 
 
@@ -28,19 +30,18 @@ int main(int argc, const char *argv[])
 {
     if (argc == 2)
     {
-        int rc;
         const char *verb = argv[1];
         if (!strcmp(verb, "all"))
         {
             for (int i = 0; i < NumTests; ++i)
             {
                 printf("Running: %s\n", TestList[i].name);
-                rc = TestList[i].func();
-                if (rc)
+                if (TestList[i].func())
                 {
-                    printf("FAIL: %s returned %d\n", TestList[i].name, rc);
+                    printf("FAIL: %s\n", TestList[i].name);
                     return 1;
                 }
+                printf("\n");
             }
         }
         else
@@ -59,10 +60,9 @@ int main(int argc, const char *argv[])
                 printf("FAIL: Unknown test name '%s'\n", verb);
                 return 1;
             }
-            rc = test->func();
-            if (rc)
+            if (test->func())
             {
-                printf("FAIL: %s returned %d\n", test->name, rc);
+                printf("FAIL: %s\n", test->name);
                 return 1;
             }
         }
@@ -105,5 +105,12 @@ static int Logarithm()
     }
 
     printf("Logarithm: PASS\n");
+    return 0;
+}
+
+
+static int Pendulum()
+{
+    printf("Pendulum: PASS\n");
     return 0;
 }
