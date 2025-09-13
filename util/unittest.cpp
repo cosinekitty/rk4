@@ -83,16 +83,17 @@ static int Logarithm()
     // Let t be the independent variable that ranges [1, 2].
     // Let v = 1/t be the "velocity" or slope.
     // Let x = integral(v) be the "position" or integral of v over the range t=1 to t=2.
-    CosineKitty::Integrator<double, double> integ([](double t, const double& x){return 1.0 / t;});
+    CosineKitty::Integrator<double, double> integ([](double t, const double& x){return 1/t;});
 
-    const int nSteps = 1000;
+    integ.state = 0;
+    const int nSteps = 200;
     const double dt = 1.0 / nSteps;
     for (int n = 0; n < nSteps; ++n)
-        integ.step(dt*n, dt);
+        integ.step(1 + dt*n, dt);
 
     const double correct = std::log(2.0);
     const double diff = std::abs(correct - integ.state);
-    const double tolerance = 1.0e-6;
+    const double tolerance = 1.3e-12;
     printf("Integral = %0.16lf\n", integ.state);
     printf("Correct  = %0.16lf\n", correct);
     printf("Diff     = %g\n", diff);
