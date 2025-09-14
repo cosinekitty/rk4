@@ -179,6 +179,8 @@ static int Pendulum()
     const double dt = 0.01;
     int zeroCrossingCount = 0;
     double periodTimeSum = 0;
+    double minCrossingTime = 0;
+    double maxCrossingTime = 0;
     double prevCrossingTime = -1;
     const int zeroCrossingLimit = 100;
     double t = 0;
@@ -194,10 +196,24 @@ static int Pendulum()
         {
             ++zeroCrossingCount;
             double crossingTime = t; // FIXFIXFIX: Interpolate how far between samples the zero-crossing occurred.
-            periodTimeSum += crossingTime - prevCrossingTime;
+            if (prevCrossingTime >= 0)
+            {
+                double elapsed = crossingTime - prevCrossingTime;
+                periodTimeSum += elapsed;
+                if (maxCrossingTime == 0)
+                {
+                    minCrossingTime = elapsed;
+                    maxCrossingTime = elapsed;
+                }
+                else
+                {
+                    minCrossingTime = std::min(minCrossingTime, elapsed);
+                    maxCrossingTime = std::max(maxCrossingTime, elapsed);
+                }
+                if (Verbose)
+                    printf("Pendulum: zero crossing %d at time %0.6lf\n", zeroCrossingCount, crossingTime);
+            }
             prevCrossingTime = crossingTime;
-            if (Verbose)
-                printf("Pendulum: zero crossing %d at time %0.6lf\n", zeroCrossingCount, crossingTime);
         }
         t += dt;
     }
@@ -217,6 +233,9 @@ static int Pendulum()
     printf("          mean interval = %0.6lf seconds\n", meanCrossingTime);
     printf("          expected      = %0.6lf seconds\n", expectedCrossingTime);
     printf("          diff          = %g\n", diff);
+    printf("          min           = %0.6lf seconds\n", minCrossingTime);
+    printf("          max           = %0.6lf seconds\n", maxCrossingTime);
+    printf("          spread        = %g\n", maxCrossingTime - minCrossingTime);
     printf("Pendulum: PASS\n");
     return 0;
 }
