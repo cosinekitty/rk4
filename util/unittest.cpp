@@ -87,22 +87,37 @@ int main(int argc, const char *argv[])
 
 static int Logarithm()
 {
+    using state_t = CosineKitty::StateVector<2, double>;
+
     // Use the numerical integrator to estimate ln(2).
     // Let t be the independent variable that ranges [1, 2].
     // Let v = 1/t be the "velocity" or slope.
     // Let x = integral(v) be the "position" or integral of v over the range t=1 to t=2.
-    CosineKitty::Integrator<double, double> integ([](double t, const double& x){return 1/t;});
+    // The state necessarily includes t because it is needed to calculate v.
 
-    integ.state = 0;
+    auto deriv = [](const state_t& state)
+    {
+        state_t m;
+        m.coord[0] = 1;                     // dt/dt = 1
+        m.coord[1] = 1 / state.coord[0];    // v = dx/dt = 1/t
+        return m;
+    };
+
+    CosineKitty::Integrator<double, state_t> integ(deriv);
+
+    integ.state.coord[1] = 0;
     const int nSteps = 200;
     const double dt = 1.0 / nSteps;
     for (int n = 0; n < nSteps; ++n)
-        integ.step(1 + dt*n, dt);
+    {
+        integ.state.coord[0] = 1 + dt*n;
+        integ.step(dt);
+    }
 
     const double correct = std::log(2.0);
-    const double diff = std::abs(correct - integ.state);
+    const double diff = std::abs(correct - integ.state.coord[1]);
     const double tolerance = 1.3e-12;
-    printf("Integral = %0.16lf\n", integ.state);
+    printf("Integral = %0.16lf\n", integ.state.coord[1]);
     printf("Correct  = %0.16lf\n", correct);
     printf("Diff     = %g\n", diff);
 
@@ -138,7 +153,7 @@ static int Pendulum()
     static constexpr double g = 9.8;    // gravitational acceleration [m/s^2]
     static constexpr double L = 1;      // length of the pendulum [m]
 
-    auto deriv = [](double t, const state_t& state) -> state_t
+    auto deriv = [](const state_t& state) -> state_t
     {
         // Calculate the derivative of [theta, omega] to obtain [omega, alpha].
         state_t slope;
@@ -173,7 +188,7 @@ static int Pendulum()
             printf("Pendulum: t=%0.2lf, theta=%0.6lf, omega=%0.6lf\n", t, integ.state.coord[0], integ.state.coord[1]);
 
         const double prevAngle = integ.state.coord[0];
-        integ.step(t, dt);      // FIXFIXFIX: passing 't' separately was a mistake in the API (should be part of the state if you care about it!)
+        integ.step(dt);
         const double angle = integ.state.coord[0];
         if (angle * prevAngle <= 0)
         {
@@ -194,10 +209,11 @@ static int Pendulum()
     }
 
     static constexpr double largeAngleCorrection = 1 + A*A/16 + A*A*A*A*(11.0/3072);
+    printf("          large angle correction factor = %0.6lf\n", largeAngleCorrection);
     const double meanCrossingTime = periodTimeSum / zeroCrossingCount;
     const double expectedCrossingTime = M_PI * std::sqrt(L/g) * largeAngleCorrection;       // half-trip time
     const double diff = std::abs(expectedCrossingTime - meanCrossingTime);
-    printf("Pendulum: %d zero-crossings\n", zeroCrossingCount);
+    printf("          %d zero-crossings\n", zeroCrossingCount);
     printf("          mean interval = %0.6lf seconds\n", meanCrossingTime);
     printf("          expected      = %0.6lf seconds\n", expectedCrossingTime);
     printf("          diff          = %g\n", diff);
