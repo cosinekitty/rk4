@@ -88,7 +88,7 @@ int main(int argc, const char *argv[])
 
 static int Logarithm()
 {
-    using state_t = CosineKitty::StateVector<2, double>;
+    using state_t = CosineKitty::StateVector<2, double, double>;
 
     // Use the numerical integrator to estimate ln(2).
     // Let t be the independent variable that ranges [1, 2].
@@ -148,7 +148,7 @@ static int Pendulum()
     // position and angular speed as a pair: [theta, omega].
     // The derivative of the state gives another pair: [omega, alpha].
     // Thus the state type needs 2 numbers.
-    using state_t = CosineKitty::StateVector<2, double>;
+    using state_t = CosineKitty::StateVector<2, double, double>;
     using integ_t = CosineKitty::Integrator<double, state_t>;
 
     static constexpr double g = 9.8;    // gravitational acceleration [m/s^2]

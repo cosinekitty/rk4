@@ -42,10 +42,10 @@ namespace CosineKitty
     // This code tries to remain as unopinionated as possible in order
     // to remain flexibly reusable for a variety of physical systems.
 
-    template <unsigned dimensions, typename real_t>
+    template <unsigned dimensions, typename coord_t, typename real_t>
     struct StateVector
     {
-        real_t coord[dimensions]{};
+        coord_t coord[dimensions]{};
 
         void operator += (const StateVector& other)
         {
