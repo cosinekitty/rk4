@@ -473,13 +473,25 @@ static double VecDiff(const vec_t& vec, double x, double y, double z)
 static int VerifyBody(
     const char *name,
     const body_state_t& body,
+    double rtol, double vtol,
     double rx, double ry, double rz,
     double vx, double vy, double vz)
 {
     double posdiff = VecDiff(body.pos, rx, ry, rz);
     double veldiff = VecDiff(body.vel, vx, vy, vz);
-    printf("%-10s:  posdiff=%g, veldiff=%g\n", name, posdiff, veldiff);
-    return 0;
+    printf("%-10s:  posdiff=%8.6f, veldiff=%g\n", name, posdiff, veldiff);
+    int rc = 0;
+    if (posdiff > rtol)
+    {
+        printf("EXCESSIVE POSITION ERROR\n");
+        rc = 1;
+    }
+    if (veldiff > vtol)
+    {
+        printf("EXCESSIVE VELOCITY ERROR\n");
+        rc = 1;
+    }
+    return rc;
 }
 
 
@@ -537,18 +549,19 @@ static int SolarSystem()
     InitSolarSystem(integ.state);
 
     static constexpr double dt = 1.0;           // days
+    static constexpr unsigned oversample = 2;
     static constexpr unsigned ndays = 36520;    // from year 2000 to year 2100
+    static constexpr unsigned nsteps = oversample * ndays;
 
-    for (unsigned i = 0; i < ndays; ++i)
-    {
-        integ.step(dt);
-    }
+    for (unsigned i = 0; i < nsteps; ++i)
+        integ.step(dt/oversample);
 
     PrintSolarSystem(integ.state);
 
     if (VerifyBody(
         "Sun",
         integ.state.coord[0],
+        0.0027, 1.4e-07,
         8.413897447213910E-03,  9.903789233113485E-04, -2.534903517530939E-04,
         -1.318249797153773E-06,  8.245353286641178E-06, -2.091998687543678E-08
     )) return 1;
@@ -556,6 +569,7 @@ static int SolarSystem()
     if (VerifyBody(
         "Jupiter",
         integ.state.coord[1],
+        0.067, 9.0e-05,
         -5.371058248261468E+00, -8.719764486851470E-01,  1.236123797189617E-01,
         1.116401240893049E-03, -7.098409700584834E-03,  4.923287714072183E-06
     )) return 1;
@@ -563,6 +577,7 @@ static int SolarSystem()
     if (VerifyBody(
         "Saturn",
         integ.state.coord[2],
+        0.011, 7.7e-06,
         -9.152012613180709E+00, -3.051457308928910E+00,  4.178207655560304E-01,
         1.458944935312708E-03, -5.302701887770315E-03,  3.316613855544254E-05
     )) return 1;
@@ -570,6 +585,7 @@ static int SolarSystem()
     if (VerifyBody(
         "Uranus",
         integ.state.coord[3],
+        0.0031, 1.1e-07,
         1.888005010509793E+01,  6.532300850250829E+00, -2.200617931964084E-01,
         -1.315257453228866E-03,  3.534033021483668E-03,  3.020648507746295E-05
     )) return 1;
@@ -577,6 +593,7 @@ static int SolarSystem()
     if (VerifyBody(
         "Neptune",
         integ.state.coord[4],
+        0.047, 5.0e-06,
         -2.904645113602549E+01,  8.251202310543533E+00,  4.995306486561001E-01,
         -8.755137439452106E-04, -2.999579728759390E-03,  8.225104197814640E-05
     )) return 1;
