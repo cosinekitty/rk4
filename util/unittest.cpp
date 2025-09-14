@@ -109,10 +109,17 @@ static int Logarithm()
     integ.state.coord[1] = 0;
     const int nSteps = 200;
     const double dt = 1.0 / nSteps;
+    integ.state.coord[0] = 1;
     for (int n = 0; n < nSteps; ++n)
-    {
-        integ.state.coord[0] = 1 + dt*n;
         integ.step(dt);
+
+    const double x2 = integ.state.coord[0];
+    const double xdiff = std::abs(2 - x2);
+    printf("x2 = %0.16f, xdiff = %g\n", x2, xdiff);
+    if (xdiff > 2.14e-14)
+    {
+        printf("FAIL(Logarithm): EXCESSIVE xdiff\n");
+        return 1;
     }
 
     const double correct = std::log(2.0);
