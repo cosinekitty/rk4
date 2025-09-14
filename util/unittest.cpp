@@ -163,6 +163,13 @@ static int Pendulum()
         return slope;
     };
 
+    auto energy_over_mass = [](const state_t& state) -> double
+    {
+        const double theta = state.coord[0];
+        const double v = L * state.coord[1];
+        return L*g*(1 - std::cos(theta)) + v*v/2;
+    };
+
     // We test the pendulum model by running the simulation
     // and measuring the following properties:
     //
@@ -185,6 +192,8 @@ static int Pendulum()
     double prevCrossingTime = -1;
     const int zeroCrossingLimit = 100;
     double t = 0;
+    double minEnergyOverMass = energy_over_mass(integ.state);
+    double maxEnergyOverMass = minEnergyOverMass;
     while (zeroCrossingCount < zeroCrossingLimit && t < 600.0)
     {
         if (Verbose)
@@ -193,6 +202,10 @@ static int Pendulum()
         const double prevAngle = integ.state.coord[0];
         integ.step(dt);
         const double angle = integ.state.coord[0];
+
+        const double em = energy_over_mass(integ.state);
+        minEnergyOverMass = std::min(minEnergyOverMass, em);
+        maxEnergyOverMass = std::max(maxEnergyOverMass, em);
 
         if (angle * prevAngle <= 0)
         {
@@ -229,6 +242,9 @@ static int Pendulum()
         return 1;
     }
 
+    const double emRange = std::abs(maxEnergyOverMass - minEnergyOverMass);
+    printf("          energy/mass: min=%0.16f, max=%0.16f, range=%g\n", minEnergyOverMass, maxEnergyOverMass, emRange);
+
     static constexpr double largeAngleCorrection = 1 + A*A/16 + A*A*A*A*(11.0/3072);
     printf("          large angle correction factor = %0.16lf\n", largeAngleCorrection);
     const double meanCrossingTime = periodTimeSum / zeroCrossingCount;
@@ -239,8 +255,11 @@ static int Pendulum()
     printf("          mean interval = %0.16f seconds\n", meanCrossingTime);
     printf("          expected      = %0.16f seconds\n", expectedCrossingTime);
     printf("          diff          = %g\n", diff);
-    printf("          min           = %0.16f seconds\n", minCrossingTime);
-    printf("          max           = %0.16f seconds\n", maxCrossingTime);
+    if (Verbose)
+    {
+        printf("          min           = %0.16f seconds\n", minCrossingTime);
+        printf("          max           = %0.16f seconds\n", maxCrossingTime);
+    }
     printf("          spread        = %g\n", spread);
     if (diff > 7.08e-09)
     {
@@ -250,6 +269,11 @@ static int Pendulum()
     if (spread > 5.89e-07)
     {
         printf("FAIL(Pendulum): EXCESSIVE spread\n");
+        return 1;
+    }
+    if (emRange > 4.91e-09)
+    {
+        printf("FAIL(Pendulum): EXCESSIVE energy/mass range\n");
         return 1;
     }
     printf("Pendulum: PASS\n");
