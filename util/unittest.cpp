@@ -24,10 +24,18 @@ static Test TestList[] =
 
 
 constexpr int NumTests = static_cast<int>(sizeof(TestList) / sizeof(TestList[0]));
+bool Verbose = false;
 
 
 int main(int argc, const char *argv[])
 {
+    if (argc>1 && !strcmp(argv[1], "-v"))
+    {
+        Verbose = true;
+        --argc;
+        ++argv;
+    }
+
     if (argc == 2)
     {
         const char *verb = argv[1];
@@ -124,26 +132,18 @@ static int Pendulum()
     // position and angular speed as a pair: [theta, omega].
     // The derivative of the state gives another pair: [omega, alpha].
     // Thus the state type needs 2 numbers.
-    static constexpr unsigned ndim = 2;
-    using state_t = CosineKitty::StateVector<ndim, double>;
+    using state_t = CosineKitty::StateVector<2, double>;
     using integ_t = CosineKitty::Integrator<double, state_t>;
 
     static constexpr double g = 9.8;    // gravitational acceleration [m/s^2]
     static constexpr double L = 1;      // length of the pendulum [m]
-
-    // Start the pendulum displaced away from the vertical, but at rest (speed = 0).
-    state_t pendulum;
-    const double initialDisplacementDeg = 5;
-    const double initialDisplacementRad = (M_PI/180) * initialDisplacementDeg;
-    pendulum.coord[0] = initialDisplacementRad;
-    pendulum.coord[1] = 0;
 
     auto deriv = [](double t, const state_t& state) -> state_t
     {
         // Calculate the derivative of [theta, omega] to obtain [omega, alpha].
         state_t slope;
         slope.coord[0] = state.coord[1];    // copy angular speed (omega) [rad/s]
-        slope.coord[1] = (g/L) * std::sin(state.coord[0]);    // calculate angular acceleration alpha [rad/s^2]
+        slope.coord[1] = (-g/L) * std::sin(state.coord[0]);    // calculate angular acceleration alpha [rad/s^2]
         return slope;
     };
 
@@ -155,17 +155,52 @@ static int Pendulum()
     // 3. The maximum and minimum amplitude should be identical.
     // 4. When run backwards in time, the results should be the same. (Pass in dt < 0)
 
+    // Start the pendulum displaced away from the vertical, but at rest (speed = 0).
+    static constexpr double A = 5.0 * (M_PI/180);   // initial angle [rad]
     integ_t integ(deriv);
+    integ.state.coord[0] = A;
+    integ.state.coord[1] = 0.0;
 
     const double dt = 0.01;
     int zeroCrossingCount = 0;
+    double periodTimeSum = 0;
+    double prevCrossingTime = -1;
     const int zeroCrossingLimit = 100;
-    while (zeroCrossingCount < zeroCrossingLimit)
+    double t = 0;
+    while (zeroCrossingCount < zeroCrossingLimit && t < 600.0)
     {
-        integ.step(0, dt);      // FIXFIXFIX: passing 't' separately was a mistake in the API
-        break;  // FIXFIXFIX
+        if (Verbose)
+            printf("Pendulum: t=%0.2lf, theta=%0.6lf, omega=%0.6lf\n", t, integ.state.coord[0], integ.state.coord[1]);
+
+        const double prevAngle = integ.state.coord[0];
+        integ.step(t, dt);      // FIXFIXFIX: passing 't' separately was a mistake in the API (should be part of the state if you care about it!)
+        const double angle = integ.state.coord[0];
+        if (angle * prevAngle <= 0)
+        {
+            ++zeroCrossingCount;
+            double crossingTime = t; // FIXFIXFIX: Interpolate how far between samples the zero-crossing occurred.
+            periodTimeSum += crossingTime - prevCrossingTime;
+            prevCrossingTime = crossingTime;
+            if (Verbose)
+                printf("Pendulum: zero crossing %d at time %0.6lf\n", zeroCrossingCount, crossingTime);
+        }
+        t += dt;
     }
 
+    if (zeroCrossingCount != zeroCrossingLimit)
+    {
+        printf("FAIL(Pendulum): expected %d zero-crossings, found %d\n", zeroCrossingLimit, zeroCrossingCount);
+        return 1;
+    }
+
+    static constexpr double largeAngleCorrection = 1 + A*A/16 + A*A*A*A*(11.0/3072);
+    const double meanCrossingTime = periodTimeSum / zeroCrossingCount;
+    const double expectedCrossingTime = M_PI * std::sqrt(L/g) * largeAngleCorrection;       // half-trip time
+    const double diff = std::abs(expectedCrossingTime - meanCrossingTime);
+    printf("Pendulum: %d zero-crossings\n", zeroCrossingCount);
+    printf("          mean interval = %0.6lf seconds\n", meanCrossingTime);
+    printf("          expected      = %0.6lf seconds\n", expectedCrossingTime);
+    printf("          diff          = %g\n", diff);
     printf("Pendulum: PASS\n");
     return 0;
 }
