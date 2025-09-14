@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include <cassert>
 #include "rk4_integrator.hpp"
 
 using test_func_t = int (*)();
@@ -192,12 +193,16 @@ static int Pendulum()
         const double prevAngle = integ.state.coord[0];
         integ.step(dt);
         const double angle = integ.state.coord[0];
+
         if (angle * prevAngle <= 0)
         {
-            ++zeroCrossingCount;
-            double crossingTime = t; // FIXFIXFIX: Interpolate how far between samples the zero-crossing occurred.
+            assert(angle != prevAngle);
+            const double rho = prevAngle/(prevAngle - angle);
+            assert(rho>=0 && rho<=1);
+            const double crossingTime = t + rho*dt;
             if (prevCrossingTime >= 0)
             {
+                ++zeroCrossingCount;
                 double elapsed = crossingTime - prevCrossingTime;
                 periodTimeSum += elapsed;
                 if (maxCrossingTime == 0)
@@ -225,17 +230,28 @@ static int Pendulum()
     }
 
     static constexpr double largeAngleCorrection = 1 + A*A/16 + A*A*A*A*(11.0/3072);
-    printf("          large angle correction factor = %0.6lf\n", largeAngleCorrection);
+    printf("          large angle correction factor = %0.16lf\n", largeAngleCorrection);
     const double meanCrossingTime = periodTimeSum / zeroCrossingCount;
     const double expectedCrossingTime = M_PI * std::sqrt(L/g) * largeAngleCorrection;       // half-trip time
     const double diff = std::abs(expectedCrossingTime - meanCrossingTime);
+    const double spread = std::abs(maxCrossingTime - minCrossingTime);
     printf("          %d zero-crossings\n", zeroCrossingCount);
-    printf("          mean interval = %0.6lf seconds\n", meanCrossingTime);
-    printf("          expected      = %0.6lf seconds\n", expectedCrossingTime);
+    printf("          mean interval = %0.16f seconds\n", meanCrossingTime);
+    printf("          expected      = %0.16f seconds\n", expectedCrossingTime);
     printf("          diff          = %g\n", diff);
-    printf("          min           = %0.6lf seconds\n", minCrossingTime);
-    printf("          max           = %0.6lf seconds\n", maxCrossingTime);
-    printf("          spread        = %g\n", maxCrossingTime - minCrossingTime);
+    printf("          min           = %0.16f seconds\n", minCrossingTime);
+    printf("          max           = %0.16f seconds\n", maxCrossingTime);
+    printf("          spread        = %g\n", spread);
+    if (diff > 7.08e-09)
+    {
+        printf("FAIL(Pendulum): EXCESSIVE diff\n");
+        return 1;
+    }
+    if (spread > 5.89e-07)
+    {
+        printf("FAIL(Pendulum): EXCESSIVE spread\n");
+        return 1;
+    }
     printf("Pendulum: PASS\n");
     return 0;
 }
