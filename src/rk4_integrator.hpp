@@ -1,13 +1,20 @@
 #pragma once
-#include <functional>
 
 namespace CosineKitty
 {
-    template <typename real_t, typename state_t>
+    // deriv_func_t must be a callable of the form: state_t(const state_t&).
+    // I don't use std::function here because it can cause heap allocations.
+    // This Integrator is intended for use in audio rendering, where I cannot
+    // tolerate audio glitches due to unpredictable blocking in a memory allocator.
+    // This causes a little extra verbosity defining the type, and requires
+    // you to define your type after the derivative callable has been delcared.
+    // It also makes it a little harder to figure out what's wrong if you pass
+    // in the wrong kind of function!
+
+    template <typename real_t, typename state_t, typename deriv_func_t>
     class Integrator
     {
     public:
-        using deriv_func_t = std::function<state_t(const state_t&)>;
         deriv_func_t deriv;
         state_t state{};
 

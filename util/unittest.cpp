@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <cmath>
@@ -98,7 +99,7 @@ static int Logarithm()
     // Let x = integral(v) be the "position" or integral of v over the range t=1 to t=2.
     // The state necessarily includes t because it is needed to calculate v.
 
-    auto deriv = [](const state_t& state)
+    auto deriv = [](const state_t& state) -> state_t
     {
         state_t m;
         m.coord[0] = 1;                     // dt/dt = 1
@@ -106,7 +107,8 @@ static int Logarithm()
         return m;
     };
 
-    CosineKitty::Integrator<double, state_t> integ(deriv);
+    using integ_t = CosineKitty::Integrator<double, state_t, decltype(deriv)>;
+    integ_t integ(deriv);
 
     integ.state.coord[1] = 0;
     const int nSteps = 200;
@@ -158,7 +160,6 @@ static int Pendulum()
     // The derivative of the state gives another pair: [omega, alpha].
     // Thus the state type needs 2 numbers.
     using state_t = CosineKitty::StateVector<2, double, double>;
-    using integ_t = CosineKitty::Integrator<double, state_t>;
 
     static constexpr double g = 9.8;    // gravitational acceleration [m/s^2]
     static constexpr double L = 1;      // length of the pendulum [m]
@@ -171,6 +172,8 @@ static int Pendulum()
         slope.coord[1] = (-g/L) * std::sin(state.coord[0]);    // calculate angular acceleration alpha [rad/s^2]
         return slope;
     };
+
+    using integ_t = CosineKitty::Integrator<double, state_t, decltype(deriv)>;
 
     auto energy_over_mass = [](const state_t& state) -> double
     {
@@ -544,7 +547,7 @@ static int SolarSystem()
         return deriv;
     };
 
-    using integ_t = CosineKitty::Integrator<double, system_state_t>;
+    using integ_t = CosineKitty::Integrator<double, system_state_t, decltype(deriv)>;
     integ_t integ(deriv);
     InitSolarSystem(integ.state);
 
