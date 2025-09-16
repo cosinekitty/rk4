@@ -3,7 +3,9 @@
 #include <cstring>
 #include <cmath>
 #include <cassert>
+#include <vector>
 #include "rk4_integrator.hpp"
+#include "rk4_simulator.hpp"
 
 using test_func_t = int (*)();
 
@@ -17,13 +19,15 @@ struct Test
 static int Logarithm();
 static int Pendulum();
 static int SolarSystem();
+static int Catenary();
 
 
 static Test TestList[] =
 {
     { "log", Logarithm },
     { "pendulum", Pendulum },
-    { "solsys", SolarSystem }
+    { "solsys", SolarSystem },
+    { "catenary", Catenary }
 };
 
 
@@ -602,5 +606,71 @@ static int SolarSystem()
     )) return 1;
 
     printf("SolarSystem: PASS\n");
+    return 0;
+}
+
+
+//----------------------------------------------------------------------------------------------------
+// Test RungeKutta::Simulator, which is designed for large or variable-sized states.
+
+
+using catenary_state_t = std::vector<body_state_t>;
+static constexpr double CatSpan = 10.0;        // meters separating the two anchors
+static constexpr double CatLink = 0.25;        // rest length of spring connecting each link
+
+
+struct CatenaryDeriv
+{
+    vec_t anchor1 { 0.0, 0.0, 0.0 };
+    vec_t anchor2 { CatSpan, 0.0, 0.0 };
+
+    void operator() (catenary_state_t& slope, const catenary_state_t& state)
+    {
+        // The catenary state includes a chain of mobile particles.
+        // There are spring forces between consecutive particles,
+        // and a single gravity acceleration that acts on all of them.
+
+        const std::size_t n = state.size();
+        assert(n == slope.size());
+        for (std::size_t i=0; i < n; ++i)
+        {
+            vec_t pos1 = (i == 0)   ? anchor1 : state.at(i-1).pos;
+            vec_t pos2 = (i == n-1) ? anchor2 : state.at(i+1).pos;
+            (void)pos1;
+            (void)pos2;
+            // spring force
+            // gravity
+        }
+    }
+};
+
+
+static int Catenary()
+{
+    CatenaryDeriv deriv;
+    RungeKutta::ListAdd<body_state_t> add;
+    RungeKutta::ListMul<body_state_t, double> mul;
+    using catenary_sim_t = RungeKutta::Simulator<double, catenary_state_t, decltype(deriv), decltype(add), decltype(mul)>;
+    catenary_sim_t sim(deriv, add, mul);
+
+    const std::size_t nparticles = 50;
+    sim.resize(nparticles);
+
+    // Set up initial state: particles at locations around the line from anchor1 to anchor2.
+    for (std::size_t i = 0; i < nparticles; ++i)
+    {
+        body_state_t& s = sim.state.at(i);
+
+        // Linear interpolation between the two endpoints.
+        // But there are 2+nparticles including the anchors conceptually at indexes [-1] and [nparticles].
+        double frac = (i + 1.0) / (nparticles + 1);
+        s.pos = deriv.anchor1 + frac*(deriv.anchor2 - deriv.anchor1);
+        s.vel = vec_t{};
+    }
+
+    const double dt = 0.1;
+    sim.step(dt);
+
+    printf("Catenary: PASS\n");
     return 0;
 }

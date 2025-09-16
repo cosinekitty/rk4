@@ -8,27 +8,36 @@ namespace RungeKutta
     // This makes Simulator less functional-oriented, but eliminates
     // constantly having to construct state_t objects.
 
-    template <typename real_t, typename state_t, typename deriv_proc_t>
+    template <typename real_t, typename state_t, typename deriv_proc_t, typename add_func_t, typename mul_func_t>
     class Simulator
     {
     private:
-        state_t k1, k2, k3, k4;     // slope vectors
         state_t w;                  // work register
+        state_t k1, k2, k3, k4;     // slope vectors
         deriv_proc_t deriv;
-
-        static void extrapolate(state_t& target, const state_t& origin, const state_t& slope, real_t dt)
-        {
-            // target = origin + slope*dt
-            mul(target, slope, dt);
-            add(target, origin);
-        }
+        add_func_t add;
+        mul_func_t mul;
 
     public:
         state_t state{};
 
-        explicit ProcIntegrator(deriv_proc_t _deriv)
+        explicit Simulator(deriv_proc_t _deriv, add_func_t _add, mul_func_t _mul)
             : deriv(_deriv)
+            , add(_add)
+            , mul(_mul)
             {}
+
+
+        void resize(std::size_t itemCount)
+        {
+            w.resize(itemCount);
+            k1.resize(itemCount);
+            k2.resize(itemCount);
+            k3.resize(itemCount);
+            k4.resize(itemCount);
+            state.resize(itemCount);
+        }
+
 
         void step(real_t dt)
         {
@@ -52,6 +61,46 @@ namespace RungeKutta
             add(w, w, k4);
             mul(w, w, dt/6);
             add(state, state, w);
+        }
+    };
+
+
+    // Often we need a list of particle states as our system state.
+    // If the number of particles is very large or unpredictable,
+    // a std::vector can be useful.
+    // With that in mind, here are some functor classes for connecting
+    // Simulator with vector-based states.
+
+    template <typename item_t>
+    struct ListAdd
+    {
+        using list_t = std::vector<item_t>;
+
+        void operator() (list_t& t, list_t& a, list_t& b)
+        {
+            std::size_t n = a.size();
+            if (n == b.size() && n == t.size())
+            {
+                for (std::size_t i=0; i < n; ++i)
+                    t[i] = a[i] + b[i];
+            }
+        }
+    };
+
+
+    template <typename item_t, typename real_t>
+    struct ListMul
+    {
+        using list_t = std::vector<item_t>;
+
+        void operator() (list_t& t, list_t& a, real_t k)
+        {
+            std::size_t n = a.size();
+            if (n == t.size())
+            {
+                for (std::size_t i=0; i < n; ++i)
+                    t[i] = k * a[i];
+            }
         }
     };
 }
