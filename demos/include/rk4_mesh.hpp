@@ -1,7 +1,6 @@
 #pragma once
-#include "rk4_integrator.hpp"
+#include "rk4_simulator.hpp"
 
-namespace CosineKitty
+namespace RungeKutta4
 {
-    
 }

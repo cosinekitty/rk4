@@ -1,6 +1,6 @@
 #pragma once
 
-namespace CosineKitty
+namespace RungeKutta
 {
     // deriv_func_t must be a callable of the form: state_t(const state_t&).
     // I don't use std::function here because it can cause heap allocations.
@@ -32,7 +32,7 @@ namespace CosineKitty
         }
     };
 
-    // `StateVector` is handy for use as a `state_t` with Integrator,
+    // `StateVector` is handy for use as a `state_t` with Integrator or Simulator,
     // but it is NOT REQUIRED. You can use `double` if your model has a 1D state.
     // But most of the time you can use StateVector to express any compound state as
     // an ordered list of numbers.

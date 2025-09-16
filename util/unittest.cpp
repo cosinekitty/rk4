@@ -91,7 +91,7 @@ int main(int argc, const char *argv[])
 
 static int Logarithm()
 {
-    using state_t = CosineKitty::StateVector<2, double, double>;
+    using state_t = RungeKutta::StateVector<2, double, double>;
 
     // Use the numerical integrator to estimate ln(2).
     // Let t be the independent variable that ranges [1, 2].
@@ -107,7 +107,7 @@ static int Logarithm()
         return m;
     };
 
-    using integ_t = CosineKitty::Integrator<double, state_t, decltype(deriv)>;
+    using integ_t = RungeKutta::Integrator<double, state_t, decltype(deriv)>;
     integ_t integ(deriv);
 
     integ.state.coord[1] = 0;
@@ -159,7 +159,7 @@ static int Pendulum()
     // position and angular speed as a pair: [theta, omega].
     // The derivative of the state gives another pair: [omega, alpha].
     // Thus the state type needs 2 numbers.
-    using state_t = CosineKitty::StateVector<2, double, double>;
+    using state_t = RungeKutta::StateVector<2, double, double>;
 
     static constexpr double g = 9.8;    // gravitational acceleration [m/s^2]
     static constexpr double L = 1;      // length of the pendulum [m]
@@ -173,7 +173,7 @@ static int Pendulum()
         return slope;
     };
 
-    using integ_t = CosineKitty::Integrator<double, state_t, decltype(deriv)>;
+    using integ_t = RungeKutta::Integrator<double, state_t, decltype(deriv)>;
 
     auto energy_over_mass = [](const state_t& state) -> double
     {
@@ -390,7 +390,7 @@ inline body_state_t operator + (const body_state_t& a, const body_state_t& b)
 
 constexpr unsigned nbodies = 5;
 
-using system_state_t = CosineKitty::StateVector<nbodies, body_state_t, double>;
+using system_state_t = RungeKutta::StateVector<nbodies, body_state_t, double>;
 
 
 static void InitSolarSystem(system_state_t& ss)
@@ -547,7 +547,7 @@ static int SolarSystem()
         return deriv;
     };
 
-    using integ_t = CosineKitty::Integrator<double, system_state_t, decltype(deriv)>;
+    using integ_t = RungeKutta::Integrator<double, system_state_t, decltype(deriv)>;
     integ_t integ(deriv);
     InitSolarSystem(integ.state);
 
