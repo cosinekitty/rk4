@@ -24,10 +24,10 @@ static int Catenary();
 
 static Test TestList[] =
 {
-    { "log", Logarithm },
-    { "pendulum", Pendulum },
-    { "solsys", SolarSystem },
-    { "catenary", Catenary }
+    { "log",        Logarithm   },
+    { "pendulum",   Pendulum    },
+    { "solsys",     SolarSystem },
+    { "catenary",   Catenary    }
 };
 
 
@@ -317,6 +317,13 @@ struct vec_t
         x -= other.x;
         y -= other.y;
         z -= other.z;
+    }
+
+    void operator *= (double factor)
+    {
+        x *= factor;
+        y *= factor;
+        z *= factor;
     }
 
     double magSquared() const
@@ -616,13 +623,51 @@ static int SolarSystem()
 
 using catenary_state_t = std::vector<body_state_t>;
 static constexpr double CatSpan = 10.0;        // meters separating the two anchors
-static constexpr double CatLink = 0.25;        // rest length of spring connecting each link
+static constexpr double CatLink = 0.15;        // rest length of spring connecting each link
+static constexpr double CatStiff = 1;          // spring stiffness
+static constexpr double CatMass = 0.001;
+
+
+int WriteState(const char *outCsvFileName, const catenary_state_t& state)
+{
+    if (FILE* outfile = fopen(outCsvFileName, "wt"))
+    {
+        fprintf(outfile,"\"rx\",\"ry\",\"rz\",\"vx\",\"vy\",\"vz\"\n");
+        for (const body_state_t& b : state)
+        {
+            fprintf(
+                outfile,
+                "%0.8f,%0.8f,%0.8f,%0.8f,%0.8f,%0.8f\n",
+                b.pos.x, b.pos.y, b.pos.z, b.vel.x, b.vel.y, b.vel.z
+            );
+        }
+        fclose(outfile);
+        printf("WROTE: %s\n", outCsvFileName);
+        return 0;
+    }
+    printf("WriteState: Cannot open output file: %s\n", outCsvFileName);
+    return 1;
+}
 
 
 struct CatenaryDeriv
 {
-    vec_t anchor1 { 0.0, 0.0, 0.0 };
-    vec_t anchor2 { CatSpan, 0.0, 0.0 };
+    //                              pos                vel
+    body_state_t anchor1 { {0, 0, 0},         {0, 0, 0} };
+    body_state_t anchor2 { {CatSpan, 0, 0},   {0, 0, 0} };
+
+    vec_t gravity { 0, 0, -9.8 };     // m/s^2
+
+    const body_state_t& body(const catenary_state_t& state, int index) const
+    {
+        if (index < 0)
+            return anchor1;
+
+        if (index >= static_cast<int>(state.size()))
+            return anchor2;
+
+        return state[index];
+    }
 
     void operator() (catenary_state_t& slope, const catenary_state_t& state)
     {
@@ -630,16 +675,39 @@ struct CatenaryDeriv
         // There are spring forces between consecutive particles,
         // and a single gravity acceleration that acts on all of them.
 
-        const std::size_t n = state.size();
-        assert(n == slope.size());
-        for (std::size_t i=0; i < n; ++i)
+        const int n = static_cast<int>(state.size());
+        if (n>0 && n==static_cast<int>(slope.size()))
         {
-            vec_t pos1 = (i == 0)   ? anchor1 : state.at(i-1).pos;
-            vec_t pos2 = (i == n-1) ? anchor2 : state.at(i+1).pos;
-            (void)pos1;
-            (void)pos2;
-            // spring force
-            // gravity
+            for (int i = 0; i < n; ++i)
+            {
+                // Velocity is a trivial copy operation.
+                slope[i].pos = state[i].vel;
+
+                // Acceleration is initialized to gravity.
+                // Acceleration caused by spring forces is added below.
+                slope[i].vel = gravity;
+            }
+
+            // Calculate accelerations caused by springs and gravity.
+            // Balls and springs are like fences and posts,
+            // only the two outside balls are anchors.
+            // So there are (n+2)-1 = (n+1) springs.
+            // Calculate the force in each spring exactly once.
+            for (int i = 0; i <= n; ++i)
+            {
+                const body_state_t& a = body(state, i-1);
+                const body_state_t& b = body(state, i);
+                const vec_t dr = b.pos - a.pos;
+                const double length = dr.mag();
+                const double fmag = CatStiff*(length - CatLink);
+                const vec_t acc = (fmag/(CatMass * length))*dr;
+
+                if (i > 0)
+                    slope[i-1].vel += acc;
+
+                if (i < n)
+                    slope[i].vel -= acc;
+            }
         }
     }
 };
@@ -647,6 +715,7 @@ struct CatenaryDeriv
 
 static int Catenary()
 {
+    const double dt = 0.01;
     CatenaryDeriv deriv;
     RungeKutta::ListAdd<body_state_t> add;
     RungeKutta::ListMul<body_state_t, double> mul;
@@ -656,7 +725,7 @@ static int Catenary()
     const std::size_t nparticles = 50;
     sim.resize(nparticles);
 
-    // Set up initial state: particles at locations around the line from anchor1 to anchor2.
+    // Set up initial state: particles at locations along the line from anchor1 to anchor2.
     for (std::size_t i = 0; i < nparticles; ++i)
     {
         body_state_t& s = sim.state.at(i);
@@ -664,12 +733,46 @@ static int Catenary()
         // Linear interpolation between the two endpoints.
         // But there are 2+nparticles including the anchors conceptually at indexes [-1] and [nparticles].
         double frac = (i + 1.0) / (nparticles + 1);
-        s.pos = deriv.anchor1 + frac*(deriv.anchor2 - deriv.anchor1);
+        s.pos = deriv.anchor1.pos + frac*(deriv.anchor2.pos - deriv.anchor1.pos);
         s.vel = vec_t{};
     }
 
-    const double dt = 0.1;
-    sim.step(dt);
+    if (WriteState("output/catenary1.csv", sim.state)) return 1;
+
+    // Run the simulation, but with externally applied "friction"
+    // that decays particle speeds. This should cause the chain
+    // to settle into its final hanging shape.
+    const double decay = 0.98;
+    const unsigned stepLimit = 1051;
+    bool settled = false;
+    for (unsigned i = 0; !settled && i<=stepLimit; ++i)
+    {
+        sim.step(dt);
+
+        // Kinetic energy is proportional to the sum of squared speeds.
+        // Simultaneously measure kinetic energy and decay all the velocities.
+
+        double energy = 0;
+        for (body_state_t& b : sim.state)
+        {
+            energy += b.vel.magSquared();
+            b.vel *= decay;
+        }
+
+        if (i>100 && std::abs(energy) < 1.0e-6)
+        {
+            printf("Catenary: settled at i=%d\n", i);
+            settled = true;
+        }
+    }
+
+    if (WriteState("output/catenary2.csv", sim.state)) return 1;
+
+    if (!settled)
+    {
+        printf("FAIL(Catenary): Energy did not settle within %u steps.\n", stepLimit);
+        return 1;
+    }
 
     printf("Catenary: PASS\n");
     return 0;

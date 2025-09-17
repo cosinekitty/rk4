@@ -1,4 +1,6 @@
 #!/bin/bash
+rm -f unittest
+
 g++ -std=c++17 -Wall -Werror -o unittest -I../src \
     unittest.cpp \
     || exit 1

@@ -1,4 +1,8 @@
 #!/bin/bash
 ./build || exit 1
+[[ "${1:-all}" == "all" ]] && rm -fv output/*.csv
 ./unittest "${1:-all}" || exit 1
+diff {correct,output}/catenary1.csv || exit 1
+diff {correct,output}/catenary2.csv || exit 1
+echo "run: output files are correct."
 exit 0
