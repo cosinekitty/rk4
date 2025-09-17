@@ -715,15 +715,12 @@ struct CatenaryDeriv
 
 static int Catenary()
 {
-    const double dt = 0.01;
-    CatenaryDeriv deriv;
-    RungeKutta::ListAdd<body_state_t> add;
-    RungeKutta::ListMul<body_state_t, double> mul;
-    using catenary_sim_t = RungeKutta::Simulator<double, catenary_state_t, decltype(deriv), decltype(add), decltype(mul)>;
-    catenary_sim_t sim(deriv, add, mul);
-
     const std::size_t nparticles = 50;
-    sim.resize(nparticles);
+    const double dt = 0.01;
+
+    CatenaryDeriv deriv;
+    using catenary_sim_t = RungeKutta::ListSimulator<double, body_state_t, decltype(deriv)>;
+    catenary_sim_t sim(deriv, nparticles);
 
     // Set up initial state: particles at locations along the line from anchor1 to anchor2.
     for (std::size_t i = 0; i < nparticles; ++i)
