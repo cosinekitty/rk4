@@ -111,7 +111,9 @@ namespace RungeKutta
     {
     public:
         ListSimulator(deriv_proc_t deriv, std::size_t itemCount)
-            : Simulator<real_t, std::vector<item_t>, deriv_proc_t, ListAdd<item_t>, ListMul<item_t, real_t>>(deriv, ListAdd<item_t>(), ListMul<item_t, real_t>())
+            : Simulator<real_t, std::vector<item_t>, deriv_proc_t, ListAdd<item_t>, ListMul<item_t, real_t>>(
+                deriv, ListAdd<item_t>(), ListMul<item_t, real_t>()
+              )
         {
             this->resize(itemCount);
         }
