@@ -1,13 +1,13 @@
 #!/bin/bash
-RunDemo()
+BuildDemo()
 {
     cd "$1" || exit 1
-    ./run || exit 1
+    ./build || exit 1
     cd .. || exit 1
     return 0
 }
 
-echo "Demos: Verifying..."
-RunDemo ribbon || exit 1
+echo "Demos: Building..."
+BuildDemo ribbon || exit 1
 echo "Demos: PASS"
 exit 0

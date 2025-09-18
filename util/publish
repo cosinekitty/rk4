@@ -1,5 +1,6 @@
 #!/bin/bash
 ./verify_clean || exit 1
+cd ../demos && ./build_demos && cd ../util || exit 1
 ./run || exit 1
 ./verify_clean || exit 1
 git push || exit 1
