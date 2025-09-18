@@ -8,6 +8,24 @@ namespace RungeKutta
         double x{};
         double y{};
         double z{};
+
+        explicit MeshVector() {}
+
+        explicit MeshVector(double _x, double _y, double _z)
+            : x(_x)
+            , y(_y)
+            , z(_z)
+            {}
+
+        friend MeshVector operator * (double factor, const MeshVector& vec)
+        {
+            return MeshVector(factor*vec.x, factor*vec.y, factor*vec.z);
+        }
+
+        friend MeshVector operator + (const MeshVector& a, const MeshVector& b)
+        {
+            return MeshVector(a.x + b.x, a.y + b.y, a.z + b.z);
+        }
     };
 
 
@@ -15,6 +33,23 @@ namespace RungeKutta
     {
         MeshVector pos;
         MeshVector vel;
+
+        explicit MeshParticle() {}
+
+        explicit MeshParticle(const MeshVector& _pos, const MeshVector& _vel)
+            : pos(_pos)
+            , vel(_vel)
+            {}
+
+        friend MeshParticle operator * (double factor, const MeshParticle& state)
+        {
+            return MeshParticle(factor * state.pos, factor * state.vel);
+        }
+
+        friend MeshParticle operator + (const MeshParticle& a, const MeshParticle& b)
+        {
+            return MeshParticle(a.pos + b.pos, a.vel + b.vel);
+        }
     };
 
 
@@ -24,17 +59,25 @@ namespace RungeKutta
     class MeshDeriv
     {
     public:
-        void operator() (const mesh_list_t& slope, const mesh_list_t& state)
+        void operator() (mesh_list_t& slope, const mesh_list_t& state)
         {
-
+            const std::size_t n = slope.size();
+            if (n == state.size())
+            {
+                for (std::size_t i = 0; i < n; ++i)
+                {
+                    slope[i].pos = state[i].vel;
+                    slope[i].vel = MeshVector(0, 0, 0);
+                }
+            }
         }
     };
 
 
-    using mesh_base_t = ListSimulator<double, MeshVector, MeshDeriv>;
+    using mesh_base_t = ListSimulator<double, MeshParticle, MeshDeriv>;
 
 
-    class MeshSimulator : mesh_base_t
+    class MeshSimulator : public mesh_base_t
     {
     private:
 
@@ -54,7 +97,7 @@ namespace RungeKutta
         static constexpr std::size_t ParticleCount = RibbonWidth * RibbonLength;
         static constexpr std::size_t MobileCount   = RibbonWidth * MobileLength;
 
-        RibbonSimulator()
+        explicit RibbonSimulator()
             : MeshSimulator(ParticleCount)
         {
             makeRibbon();

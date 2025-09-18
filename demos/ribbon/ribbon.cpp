@@ -10,11 +10,21 @@ struct RenderContext
     float zoom = 8000;     // pixels per meter
     float xCenter = 0.05;
     float yCenter = 0.00;
+
+    void draw(RungeKutta::RibbonSimulator& ribbon)
+    {
+        
+    }
 };
 
 
 int main(int argc, const char *argv[])
 {
+    // This program does NOT generate audio,
+    // but it is a feasibility study for audio generation.
+    const double sampleRate = 48000;
+    const double dt = 1 / sampleRate;
+
     RungeKutta::RibbonSimulator ribbon;
     RenderContext render;
     InitWindow(render.screenWidth, render.screenHeight, "Ribbon Mesh");
@@ -23,9 +33,9 @@ int main(int argc, const char *argv[])
     {
         BeginDrawing();
         ClearBackground(BLACK);
-        // render a frame
+        render.draw(ribbon);
         EndDrawing();
-        // update the simulation
+        ribbon.step(dt);
     }
     CloseWindow();
 
