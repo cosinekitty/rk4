@@ -622,10 +622,10 @@ static int SolarSystem()
 
 
 using catenary_state_t = std::vector<body_state_t>;
-static constexpr double CatSpan = 10.0;        // meters separating the two anchors
-static constexpr double CatLink = 0.15;        // rest length of spring connecting each link
-static constexpr double CatStiff = 1;          // spring stiffness
-static constexpr double CatMass = 0.001;
+static constexpr double CatSpan = 10.0;         // distance separating the two anchors [m]
+static constexpr double CatLink = 0.15;         // rest length of spring connecting each link [m]
+static constexpr double CatStiff = 1;           // spring stiffness [N/m]
+static constexpr double CatMass = 0.001;        // mass of each particle [kg]
 
 
 int WriteState(const char *outCsvFileName, const catenary_state_t& state)

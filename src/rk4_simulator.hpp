@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 
 namespace RungeKutta
 {
@@ -14,12 +15,13 @@ namespace RungeKutta
     private:
         state_t w;                  // work register
         state_t k1, k2, k3, k4;     // slope vectors
+
+    public:
         deriv_proc_t deriv;
         add_func_t add;
         mul_func_t mul;
-
-    public:
         state_t state{};
+
 
         explicit Simulator(deriv_proc_t _deriv, add_func_t _add, mul_func_t _mul)
             : deriv(_deriv)
@@ -110,10 +112,11 @@ namespace RungeKutta
         : public Simulator<real_t, std::vector<item_t>, deriv_proc_t, ListAdd<item_t>, ListMul<item_t, real_t>>
     {
     public:
-        ListSimulator(deriv_proc_t deriv, std::size_t itemCount)
-            : Simulator<real_t, std::vector<item_t>, deriv_proc_t, ListAdd<item_t>, ListMul<item_t, real_t>>(
-                deriv, ListAdd<item_t>(), ListMul<item_t, real_t>()
-              )
+        using state_t = std::vector<item_t>;
+
+        explicit ListSimulator(deriv_proc_t deriv, std::size_t itemCount)
+            : Simulator<real_t, state_t, deriv_proc_t, ListAdd<item_t>, ListMul<item_t, real_t>>(
+                deriv, ListAdd<item_t>(), ListMul<item_t, real_t>())
         {
             this->resize(itemCount);
         }

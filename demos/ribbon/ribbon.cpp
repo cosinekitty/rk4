@@ -15,6 +15,7 @@ struct RenderContext
 
 int main(int argc, const char *argv[])
 {
+    RungeKutta::RibbonSimulator ribbon;
     RenderContext render;
     InitWindow(render.screenWidth, render.screenHeight, "Ribbon Mesh");
     SetTargetFPS(240);
