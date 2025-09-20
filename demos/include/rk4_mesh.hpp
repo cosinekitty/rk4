@@ -100,8 +100,8 @@ namespace RungeKutta
     class RibbonSimulator : public MeshSimulator
     {
     public:
-        static constexpr std::size_t HorizontalSpacing = 0.01;  // distance between columns [m]
-        static constexpr std::size_t VerticalSpacing = 0.01;    // distance between rows [m]
+        static constexpr double HorizontalSpacing = 0.01;  // distance between columns [m]
+        static constexpr double VerticalSpacing = 0.01;    // distance between rows [m]
         static constexpr std::size_t MobileColumns = 13;
         static constexpr std::size_t RibbonColumns = 2 + MobileColumns;     // anchors on both ends of the ribbon
         static constexpr std::size_t RibbonRows = 3;
