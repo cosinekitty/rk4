@@ -116,7 +116,7 @@ namespace RungeKutta
         }
 
     private:
-        std::size_t index(std::size_t col, std::size_t row) const
+        static std::size_t index(std::size_t col, std::size_t row)
         {
             // Diagram:
             //
@@ -137,10 +137,10 @@ namespace RungeKutta
             if (col >= RibbonColumns)
                 throw std::out_of_range("Invalid mesh column: " + std::to_string(col) + " >= " + std::to_string(RibbonColumns));
 
-            if (row >= RibbonColumns)
-                throw std::out_of_range("Invalid mesh column: " + std::to_string(col) + " >= " + std::to_string(RibbonColumns));
+            if (row >= RibbonRows)
+                throw std::out_of_range("Invalid mesh row: " + std::to_string(row) + " >= " + std::to_string(RibbonRows));
 
-            // Work with MeshDeriv to make things run faster and to make the code simpler.
+            // Cooperate with MeshDeriv to make things run faster and to make the code simpler.
             // Put all mobile balls at the front of the list, and all anchor balls at the back.
             // Anything that wants to iterate over either or both has a very simple contiguous range.
 
