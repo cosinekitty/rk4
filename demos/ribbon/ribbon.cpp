@@ -57,10 +57,20 @@ struct RenderContext
         const int ballRadius = scale(0.0005);
         for (const MeshParticle& p : ribbon.state)
         {
-            int x = xScreen(p.pos.x);
-            int y = yScreen(p.pos.y);
-            //printf("(%d, %d)\n", x, y);
+            const int x = xScreen(p.pos.x);
+            const int y = yScreen(p.pos.y);
             DrawCircleGradient(x, y, ballRadius, GREEN, DARKGREEN);
+        }
+
+        for (const MeshSpring& s : ribbon.springs)
+        {
+            const MeshParticle& a = ribbon.state.at(s.ia);
+            const MeshParticle& b = ribbon.state.at(s.ib);
+            const int ax = xScreen(a.pos.x);
+            const int ay = yScreen(a.pos.y);
+            const int bx = xScreen(b.pos.x);
+            const int by = yScreen(b.pos.y);
+            DrawLine(ax, ay, bx, by, YELLOW);
         }
     }
 };
@@ -69,7 +79,7 @@ struct RenderContext
 int main(int argc, const char *argv[])
 {
     // This program does NOT generate audio,
-    // but it is a feasibility study for audio generation.
+    // but it *is* a feasibility study for audio generation.
     const double sampleRate = 48000;
     const double dt = 1 / sampleRate;
 

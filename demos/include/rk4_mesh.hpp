@@ -88,9 +88,31 @@ namespace RungeKutta
     using mesh_base_t = ListSimulator<double, MeshParticle, MeshDeriv>;
 
 
+    struct MeshSpring
+    {
+        const std::size_t ia;
+        const std::size_t ib;
+
+        explicit MeshSpring()
+            : ia(-1)
+            , ib(-1)
+            {}
+
+        explicit MeshSpring(std::size_t aIndex, std::size_t bIndex)
+            : ia(aIndex)
+            , ib(bIndex)
+            {}
+    };
+
+
+    using spring_list_t = std::vector<MeshSpring>;
+
+
     class MeshSimulator : public mesh_base_t
     {
     public:
+        spring_list_t springs;
+
         explicit MeshSimulator(std::size_t mobileCount, std::size_t anchorCount)
             : mesh_base_t(MeshDeriv(mobileCount, anchorCount), mobileCount + anchorCount)
             {}
@@ -115,7 +137,13 @@ namespace RungeKutta
             makeRibbon();
         }
 
+        static bool valid(std::size_t col, std::size_t row)
+        {
+            return (col < RibbonColumns) && (row < RibbonRows);
+        }
+
     private:
+
         static std::size_t index(std::size_t col, std::size_t row)
         {
             // Diagram:
@@ -165,15 +193,29 @@ namespace RungeKutta
             return state.at(index(col, row));
         }
 
+        void addSpring(std::size_t acol, std::size_t arow, std::size_t bcol, std::size_t brow)
+        {
+            if (valid(acol,arow) && valid(bcol,brow))
+            {
+                int aindex = index(acol, arow);
+                int bindex = index(bcol, brow);
+                springs.push_back(MeshSpring(aindex, bindex));
+            }
+        }
+
         void makeRibbon()
         {
+            // Intialize particle positions and velocies.
             for (std::size_t col = 0; col < RibbonColumns; ++col)
             {
                 for (std::size_t row = 0; row < RibbonRows; ++row)
                 {
-                    MeshParticle&p = particle(col, row);
+                    MeshParticle& p = particle(col, row);
                     p.pos = MeshVector(col * HorizontalSpacing, row * VerticalSpacing, 0);
                     p.vel = MeshVector(0, 0, 0);
+
+                    addSpring(col-1, row, col, row);
+                    addSpring(col, row-1, col, row);
                 }
             }
         }
