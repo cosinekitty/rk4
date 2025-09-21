@@ -108,7 +108,7 @@ int main(int argc, const char *argv[])
     ribbon.particle(2, 0).pos.z = 0.03;
     RenderContext render(ribbon);
     InitWindow(render.screenWidth, render.screenHeight, "Ribbon Mesh");
-    SetTargetFPS(80);
+    SetTargetFPS(200);
     while (!WindowShouldClose())
     {
         BeginDrawing();

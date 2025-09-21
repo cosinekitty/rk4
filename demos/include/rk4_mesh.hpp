@@ -21,6 +21,11 @@ namespace RungeKutta
             , z(_z)
             {}
 
+        double mag() const
+        {
+            return std::sqrt(x*x + y*y + z*z);
+        }
+
         friend MeshVector operator * (double factor, const MeshVector& vec)
         {
             return MeshVector(factor*vec.x, factor*vec.y, factor*vec.z);
@@ -29,6 +34,25 @@ namespace RungeKutta
         friend MeshVector operator + (const MeshVector& a, const MeshVector& b)
         {
             return MeshVector(a.x + b.x, a.y + b.y, a.z + b.z);
+        }
+
+        friend MeshVector operator - (const MeshVector& a, const MeshVector& b)
+        {
+            return MeshVector(a.x - b.x, a.y - b.y, a.z - b.z);
+        }
+
+        void operator += (const MeshVector& other)
+        {
+            x += other.x;
+            y += other.y;
+            z += other.z;
+        }
+
+        void operator -= (const MeshVector& other)
+        {
+            x -= other.x;
+            y -= other.y;
+            z -= other.z;
         }
     };
 
@@ -60,36 +84,6 @@ namespace RungeKutta
     using mesh_list_t = std::vector<MeshParticle>;
 
 
-    class MeshDeriv
-    {
-    private:
-        const uint mobileCount;
-        const uint anchorCount;
-
-    public:
-        explicit MeshDeriv(uint _mobileCount, uint _anchorCount)
-            : mobileCount(_mobileCount)
-            , anchorCount(_anchorCount)
-            {}
-
-        void operator() (mesh_list_t& slope, const mesh_list_t& state)
-        {
-            const uint numParticles = mobileCount + anchorCount;
-            assert(numParticles == slope.size());
-            assert(numParticles == state.size());
-
-            for (uint i = 0; i < numParticles; ++i)
-            {
-                slope[i].pos = state[i].vel;
-                slope[i].vel = MeshVector(0, 0, 0);
-            }
-        }
-    };
-
-
-    using mesh_base_t = ListSimulator<double, MeshParticle, MeshDeriv>;
-
-
     struct MeshSpring
     {
         const uint ia;
@@ -110,13 +104,63 @@ namespace RungeKutta
     using spring_list_t = std::vector<MeshSpring>;
 
 
+    class MeshDeriv
+    {
+    private:
+        const uint mobileCount;
+        const uint anchorCount;
+        const spring_list_t& springs;
+
+    public:
+        MeshVector gravity {0, 0, 0};
+        double stiffness = 30.0;
+        double restLength = 0.001;
+        double mass = 0.001;
+
+        explicit MeshDeriv(uint _mobileCount, uint _anchorCount, const spring_list_t& _springs)
+            : mobileCount(_mobileCount)
+            , anchorCount(_anchorCount)
+            , springs(_springs)
+            {}
+
+
+        void operator() (mesh_list_t& slope, const mesh_list_t& state)
+        {
+            const uint numParticles = mobileCount + anchorCount;
+            assert(numParticles == slope.size());
+            assert(numParticles == state.size());
+
+            for (uint i = 0; i < numParticles; ++i)
+            {
+                slope[i].pos = state[i].vel;
+                slope[i].vel = gravity;
+            }
+
+            for (const MeshSpring& s : springs)
+            {
+                const MeshParticle& a = state.at(s.ia);
+                const MeshParticle& b = state.at(s.ib);
+                const MeshVector dr = b.pos - a.pos;
+                const double length = dr.mag();
+                const double fmag = stiffness*(length - restLength);
+                const MeshVector acc = (fmag/(mass * length)) * dr;
+                if (s.ia < mobileCount)  slope[s.ia].vel += acc;
+                if (s.ib < mobileCount)  slope[s.ib].vel -= acc;
+            }
+        }
+    };
+
+
+    using mesh_base_t = ListSimulator<double, MeshParticle, MeshDeriv>;
+
+
     class MeshSimulator : public mesh_base_t
     {
     public:
         spring_list_t springs;
 
         explicit MeshSimulator(uint mobileCount, uint anchorCount)
-            : mesh_base_t(MeshDeriv(mobileCount, anchorCount), mobileCount + anchorCount)
+            : mesh_base_t(MeshDeriv(mobileCount, anchorCount, springs), mobileCount + anchorCount)
             {}
     };
 
