@@ -154,6 +154,11 @@ namespace RungeKutta
             return !isAnchor(col, row);
         }
 
+        MeshParticle& particle(uint col, uint row)
+        {
+            return state.at(index(col, row));
+        }
+
     private:
 
         static constexpr uint index(uint col, uint row)
@@ -189,11 +194,6 @@ namespace RungeKutta
             // This puts all the mobile balls at the front as a contiguous block.
             int x = (col==0) ? (RibbonColumns-1) : (col-1);
             return row + RibbonRows*x;
-        }
-
-        MeshParticle& particle(uint col, uint row)
-        {
-            return state.at(index(col, row));
         }
 
         void addSpring(uint acol, uint arow, uint bcol, uint brow)

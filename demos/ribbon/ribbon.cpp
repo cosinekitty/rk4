@@ -11,7 +11,19 @@ struct RenderContext
     float zoom = 7000;     // pixels per meter
     float xCenter{};
     float yCenter{};
+    float zCenter{};
+    float xRotation = 77.0;      // rotation around the x-axis, in degrees
     const RungeKutta::RibbonSimulator& ribbon;
+
+    static constexpr float dcos(float deg)
+    {
+        return std::cos(static_cast<float>(M_PI/180) * deg);
+    }
+
+    static constexpr float dsin(float deg)
+    {
+        return std::sin(static_cast<float>(M_PI/180) * deg);
+    }
 
     explicit RenderContext(const RungeKutta::RibbonSimulator& _ribbon)
         : ribbon(_ribbon)
@@ -23,26 +35,36 @@ struct RenderContext
         double xmax = p0.pos.x;
         double ymin = p0.pos.y;
         double ymax = p0.pos.y;
+        double zmin = p0.pos.z;
+        double zmax = p0.pos.z;
         for (const MeshParticle& p : ribbon.state)
         {
             xmin = std::min(xmin, p.pos.x);
             xmax = std::max(xmax, p.pos.x);
             ymin = std::min(ymin, p.pos.y);
             ymax = std::max(ymax, p.pos.y);
+            zmin = std::min(zmin, p.pos.z);
+            zmax = std::min(zmax, p.pos.z);
         }
-
         xCenter = (xmin + xmax) / 2;
         yCenter = (ymin + ymax) / 2;
+        zCenter = (zmin + zmax) / 2;
     }
 
-    int xScreen(float x) const
+    void getScreenCoords(int& hor, int& ver, const RungeKutta::MeshParticle& p) const
     {
-        return (screenWidth/2) + static_cast<int>(std::round(zoom * (x - xCenter)));
-    }
-
-    int yScreen(float y) const
-    {
-        return (screenHeight/2) - static_cast<int>(std::round(zoom * (y - yCenter)));
+        const float c = dcos(xRotation);
+        const float s = dsin(xRotation);
+        const float dx = p.pos.x - xCenter;
+        const float dy = p.pos.y - yCenter;
+        const float dz = p.pos.z - zCenter;
+        const float x = dx;
+        const float y = c*dy + s*dz;
+        const float z = c*dz - s*dy;
+        const float denom = 0.3;
+        const float pers = (denom + z) / denom;
+        hor = (screenWidth /2) + static_cast<int>(std::round(zoom * pers * x));
+        ver = (screenHeight/2) - static_cast<int>(std::round(zoom * pers * y));
     }
 
     int scale(float r) const
@@ -57,20 +79,19 @@ struct RenderContext
         const int ballRadius = scale(0.0005);
         for (const MeshParticle& p : ribbon.state)
         {
-            const int x = xScreen(p.pos.x);
-            const int y = yScreen(p.pos.y);
-            DrawCircleGradient(x, y, ballRadius, GREEN, DARKGREEN);
+            int hor, ver;
+            getScreenCoords(hor, ver, p);
+            DrawCircleGradient(hor, ver, ballRadius, GREEN, DARKGREEN);
         }
 
+        int ah, av, bh, bv;
         for (const MeshSpring& s : ribbon.springs)
         {
             const MeshParticle& a = ribbon.state.at(s.ia);
             const MeshParticle& b = ribbon.state.at(s.ib);
-            const int ax = xScreen(a.pos.x);
-            const int ay = yScreen(a.pos.y);
-            const int bx = xScreen(b.pos.x);
-            const int by = yScreen(b.pos.y);
-            DrawLine(ax, ay, bx, by, YELLOW);
+            getScreenCoords(ah, av, a);
+            getScreenCoords(bh, bv, b);
+            DrawLine(ah, av, bh, bv, YELLOW);
         }
     }
 };
@@ -84,6 +105,7 @@ int main(int argc, const char *argv[])
     const double dt = 1 / sampleRate;
 
     RungeKutta::RibbonSimulator ribbon;
+    ribbon.particle(2, 0).pos.z = 0.03;
     RenderContext render(ribbon);
     InitWindow(render.screenWidth, render.screenHeight, "Ribbon Mesh");
     SetTargetFPS(80);
