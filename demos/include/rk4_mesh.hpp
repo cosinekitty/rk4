@@ -5,6 +5,8 @@
 
 namespace RungeKutta
 {
+    using uint = std::size_t;
+
     struct MeshVector
     {
         double x{};
@@ -61,22 +63,22 @@ namespace RungeKutta
     class MeshDeriv
     {
     private:
-        const std::size_t mobileCount;
-        const std::size_t anchorCount;
+        const uint mobileCount;
+        const uint anchorCount;
 
     public:
-        explicit MeshDeriv(std::size_t _mobileCount, std::size_t _anchorCount)
+        explicit MeshDeriv(uint _mobileCount, uint _anchorCount)
             : mobileCount(_mobileCount)
             , anchorCount(_anchorCount)
             {}
 
         void operator() (mesh_list_t& slope, const mesh_list_t& state)
         {
-            const std::size_t numParticles = mobileCount + anchorCount;
+            const uint numParticles = mobileCount + anchorCount;
             assert(numParticles == slope.size());
             assert(numParticles == state.size());
 
-            for (std::size_t i = 0; i < numParticles; ++i)
+            for (uint i = 0; i < numParticles; ++i)
             {
                 slope[i].pos = state[i].vel;
                 slope[i].vel = MeshVector(0, 0, 0);
@@ -90,15 +92,15 @@ namespace RungeKutta
 
     struct MeshSpring
     {
-        const std::size_t ia;
-        const std::size_t ib;
+        const uint ia;
+        const uint ib;
 
         explicit MeshSpring()
             : ia(-1)
             , ib(-1)
             {}
 
-        explicit MeshSpring(std::size_t aIndex, std::size_t bIndex)
+        explicit MeshSpring(uint aIndex, uint bIndex)
             : ia(aIndex)
             , ib(bIndex)
             {}
@@ -113,7 +115,7 @@ namespace RungeKutta
     public:
         spring_list_t springs;
 
-        explicit MeshSimulator(std::size_t mobileCount, std::size_t anchorCount)
+        explicit MeshSimulator(uint mobileCount, uint anchorCount)
             : mesh_base_t(MeshDeriv(mobileCount, anchorCount), mobileCount + anchorCount)
             {}
     };
@@ -124,12 +126,12 @@ namespace RungeKutta
     public:
         static constexpr double HorizontalSpacing = 0.01;  // distance between columns [m]
         static constexpr double VerticalSpacing = 0.01;    // distance between rows [m]
-        static constexpr std::size_t MobileColumns = 13;
-        static constexpr std::size_t RibbonColumns = 2 + MobileColumns;     // anchors on both ends of the ribbon
-        static constexpr std::size_t RibbonRows = 3;
-        static constexpr std::size_t ParticleCount = RibbonRows * RibbonColumns;
-        static constexpr std::size_t MobileCount   = RibbonRows * MobileColumns;
-        static constexpr std::size_t AnchorCount   = 2*RibbonRows;
+        static constexpr uint MobileColumns = 13;
+        static constexpr uint RibbonColumns = 2 + MobileColumns;     // anchors on both ends of the ribbon
+        static constexpr uint RibbonRows = 3;
+        static constexpr uint ParticleCount = RibbonRows * RibbonColumns;
+        static constexpr uint MobileCount   = RibbonRows * MobileColumns;
+        static constexpr uint AnchorCount   = 2*RibbonRows;
 
         explicit RibbonSimulator()
             : MeshSimulator(MobileCount, AnchorCount)
@@ -137,14 +139,24 @@ namespace RungeKutta
             makeRibbon();
         }
 
-        static bool valid(std::size_t col, std::size_t row)
+        static constexpr bool valid(uint col, uint row)
         {
             return (col < RibbonColumns) && (row < RibbonRows);
         }
 
+        static constexpr bool isAnchor(uint col, uint row)
+        {
+            return (col == 0) || (col+1 == RibbonColumns);
+        }
+
+        static constexpr bool isMobile(uint col, uint row)
+        {
+            return !isAnchor(col, row);
+        }
+
     private:
 
-        static std::size_t index(std::size_t col, std::size_t row)
+        static constexpr uint index(uint col, uint row)
         {
             // Diagram:
             //
@@ -172,43 +184,39 @@ namespace RungeKutta
             // Put all mobile balls at the front of the list, and all anchor balls at the back.
             // Anything that wants to iterate over either or both has a very simple contiguous range.
 
-            int x;
-            if (col == 0)
-            {
-                // The column of left anchors goes after mobile balls and right anchors in the array.
-                x = RibbonColumns - 1;
-            }
-            else
-            {
-                // Everything else shifts left by one column.
-                // This puts the mobile balls at the front.
-                x = col - 1;
-            }
-
+            // The column of left anchors goes after mobile balls and right anchors in the array.
+            // Everything else shifts left by one column.
+            // This puts all the mobile balls at the front as a contiguous block.
+            int x = (col==0) ? (RibbonColumns-1) : (col-1);
             return row + RibbonRows*x;
         }
 
-        MeshParticle& particle(std::size_t col, std::size_t row)
+        MeshParticle& particle(uint col, uint row)
         {
             return state.at(index(col, row));
         }
 
-        void addSpring(std::size_t acol, std::size_t arow, std::size_t bcol, std::size_t brow)
+        void addSpring(uint acol, uint arow, uint bcol, uint brow)
         {
             if (valid(acol,arow) && valid(bcol,brow))
             {
-                int aindex = index(acol, arow);
-                int bindex = index(bcol, brow);
-                springs.push_back(MeshSpring(aindex, bindex));
+                // Never connect two anchors with a spring.
+                // Such a spring has no purpose or effect; it just wastes memory and CPU.
+                if (isMobile(acol,arow) || isMobile(bcol,brow))
+                {
+                    int aindex = index(acol, arow);
+                    int bindex = index(bcol, brow);
+                    springs.push_back(MeshSpring(aindex, bindex));
+                }
             }
         }
 
         void makeRibbon()
         {
             // Intialize particle positions and velocies.
-            for (std::size_t col = 0; col < RibbonColumns; ++col)
+            for (uint col = 0; col < RibbonColumns; ++col)
             {
-                for (std::size_t row = 0; row < RibbonRows; ++row)
+                for (uint row = 0; row < RibbonRows; ++row)
                 {
                     MeshParticle& p = particle(col, row);
                     p.pos = MeshVector(col * HorizontalSpacing, row * VerticalSpacing, 0);
