@@ -54,6 +54,13 @@ namespace RungeKutta
             y -= other.y;
             z -= other.z;
         }
+
+        void operator *= (double factor)
+        {
+            x *= factor;
+            y *= factor;
+            z *= factor;
+        }
     };
 
 
@@ -177,6 +184,8 @@ namespace RungeKutta
         static constexpr uint MobileCount   = RibbonRows * MobileColumns;
         static constexpr uint AnchorCount   = 2*RibbonRows;
 
+        double decayHalfLife = 5.0;
+
         explicit RibbonSimulator()
             : MeshSimulator(MobileCount, AnchorCount)
         {
@@ -201,6 +210,12 @@ namespace RungeKutta
         MeshParticle& particle(uint col, uint row)
         {
             return state.at(index(col, row));
+        }
+
+        void update(double dt)
+        {
+            step(dt);
+            brake(dt);
         }
 
     private:
@@ -270,6 +285,13 @@ namespace RungeKutta
                     addSpring(col, row-1, col, row);
                 }
             }
+        }
+
+        void brake(double dt)
+        {
+            double decay = std::pow(0.5, dt/decayHalfLife);
+            for (MeshParticle& p : state)
+                p.vel *= decay;
         }
     };
 }

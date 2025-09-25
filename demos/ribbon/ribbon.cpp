@@ -12,7 +12,7 @@ struct RenderContext
     float xCenter{};
     float yCenter{};
     float zCenter{};
-    float xRotation = 77.0;      // rotation around the x-axis, in degrees
+    float xRotation = 60.0;      // rotation around the x-axis, in degrees
     const RungeKutta::RibbonSimulator& ribbon;
 
     static constexpr float dcos(float deg)
@@ -61,7 +61,7 @@ struct RenderContext
         const float x = dx;
         const float y = c*dy + s*dz;
         const float z = c*dz - s*dy;
-        const float denom = 0.3;
+        const float denom = 0.5;
         const float pers = (denom + z) / denom;
         hor = (screenWidth /2) + static_cast<int>(std::round(zoom * pers * x));
         ver = (screenHeight/2) - static_cast<int>(std::round(zoom * pers * y));
@@ -103,10 +103,14 @@ int main(int argc, const char *argv[])
     // but it *is* a feasibility study for audio generation.
     const double sampleRate = 48000;
     const double dt = 1 / sampleRate;
+    const double degreesPerAnimationFrame = 0.0;
 
     RungeKutta::RibbonSimulator ribbon;
-    ribbon.particle(2, 0).pos.z = 0.03;
+    //ribbon.particle(2, 0).pos.z = 0.007;
+    ribbon.particle(2, 0).vel.z = 0.007;
     RenderContext render(ribbon);
+    ribbon.decayHalfLife = 0.25;
+
     InitWindow(render.screenWidth, render.screenHeight, "Ribbon Mesh");
     SetTargetFPS(200);
     while (!WindowShouldClose())
@@ -115,7 +119,8 @@ int main(int argc, const char *argv[])
         ClearBackground(BLACK);
         render.draw();
         EndDrawing();
-        ribbon.step(dt);
+        render.xRotation += degreesPerAnimationFrame;
+        ribbon.update(dt);
     }
     CloseWindow();
 
