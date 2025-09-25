@@ -108,6 +108,7 @@ int main(int argc, const char *argv[])
     RungeKutta::RibbonSimulator ribbon;
     //ribbon.particle(2, 0).pos.z = 0.007;
     ribbon.particle(2, 0).vel.z = 0.007;
+    ribbon.deriv.gravity.z = -9.8;
     RenderContext render(ribbon);
     ribbon.decayHalfLife = 0.25;
 

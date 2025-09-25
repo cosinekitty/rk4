@@ -133,14 +133,14 @@ namespace RungeKutta
 
         void operator() (mesh_list_t& slope, const mesh_list_t& state)
         {
-            const uint numParticles = mobileCount + anchorCount;
-            assert(numParticles == slope.size());
-            assert(numParticles == state.size());
+            const uint particleCount = mobileCount + anchorCount;
+            assert(particleCount == slope.size());
+            assert(particleCount == state.size());
 
-            for (uint i = 0; i < numParticles; ++i)
+            for (uint i = 0; i < particleCount; ++i)
             {
                 slope[i].pos = state[i].vel;
-                slope[i].vel = gravity;
+                slope[i].vel = (i < mobileCount) ? gravity : MeshVector{};
             }
 
             for (const MeshSpring& s : springs)
