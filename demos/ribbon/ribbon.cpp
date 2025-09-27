@@ -103,7 +103,7 @@ int main(int argc, const char *argv[])
     // but it *is* a feasibility study for audio generation.
     const double sampleRate = 48000;
     const double dt = 1 / sampleRate;
-    const double degreesPerAnimationFrame = 0.0;
+    const double degreesPerAnimationFrame = 0.02;
 
     RungeKutta::RibbonSimulator ribbon;
     //ribbon.particle(2, 0).pos.z = 0.007;
