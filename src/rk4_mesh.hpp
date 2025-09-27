@@ -172,14 +172,16 @@ namespace RungeKutta
     };
 
 
+    template <uint RibbonRows, uint MobileColumns>
     class RibbonSimulator : public MeshSimulator
     {
+        static_assert(RibbonRows > 0);
+        static_assert(MobileColumns > 0);
+
     public:
         static constexpr double HorizontalSpacing = 0.01;  // distance between columns [m]
         static constexpr double VerticalSpacing = 0.01;    // distance between rows [m]
-        static constexpr uint MobileColumns = 13;
         static constexpr uint RibbonColumns = 2 + MobileColumns;     // anchors on both ends of the ribbon
-        static constexpr uint RibbonRows = 3;
         static constexpr uint ParticleCount = RibbonRows * RibbonColumns;
         static constexpr uint MobileCount   = RibbonRows * MobileColumns;
         static constexpr uint AnchorCount   = 2*RibbonRows;

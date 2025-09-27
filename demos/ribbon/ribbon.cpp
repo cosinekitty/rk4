@@ -4,6 +4,9 @@
 #include "rk4_mesh.hpp"
 
 
+using ribbon_t = RungeKutta::RibbonSimulator<3, 13>;
+
+
 struct RenderContext
 {
     const int screenWidth  = 1200;
@@ -13,7 +16,7 @@ struct RenderContext
     float yCenter{};
     float zCenter{};
     float xRotation = 60.0;      // rotation around the x-axis, in degrees
-    const RungeKutta::RibbonSimulator& ribbon;
+    const ribbon_t& ribbon;
 
     static constexpr float dcos(float deg)
     {
@@ -25,7 +28,7 @@ struct RenderContext
         return std::sin(static_cast<float>(M_PI/180) * deg);
     }
 
-    explicit RenderContext(const RungeKutta::RibbonSimulator& _ribbon)
+    explicit RenderContext(const ribbon_t& _ribbon)
         : ribbon(_ribbon)
     {
         using namespace RungeKutta;
@@ -105,7 +108,7 @@ int main(int argc, const char *argv[])
     const double dt = 1 / sampleRate;
     const double degreesPerAnimationFrame = 0.02;
 
-    RungeKutta::RibbonSimulator ribbon;
+    ribbon_t ribbon;
     //ribbon.particle(2, 0).pos.z = 0.007;
     ribbon.particle(2, 0).vel.z = 0.007;
     ribbon.deriv.gravity.z = -9.8;

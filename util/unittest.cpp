@@ -785,16 +785,44 @@ static int Catenary()
 
 static int RibbonAudio()
 {
+    constexpr int settleSeconds = 5;
+    constexpr int durationSeconds = 10;
+    constexpr int sampleRate = 48000;
+    constexpr double dt = 1.0 / sampleRate;
+    constexpr double speed = 50;
+
     // Create a ribbon simulator.
-    RungeKutta::RibbonSimulator sim;
+    constexpr int nrows = 2;
+    constexpr int mcols = 30;
+    RungeKutta::RibbonSimulator<nrows, mcols> ribbon;
+    ribbon.deriv.gravity.z = -9.8;
+    ribbon.decayHalfLife = 30.0;
 
     ScaledWaveFileWriter outwave;
     const char *outFileName = "output/ribbon.wav";
-    constexpr int sampleRate = 48000;
     if (!outwave.Open(outFileName, sampleRate, 2))
     {
         printf("RibbonAudio: ERROR - cannot create output file: %s\n", outFileName);
         return 1;
+    }
+
+    // Let the string settle into its low-energy state.
+    const int nsettle = settleSeconds * sampleRate;
+    for (int i = 0; i < nsettle; ++i)
+        ribbon.update(dt * speed);
+
+    // Pluck the string.
+    //ribbon.particle(1, 0).vel.z = +0.00071;
+    //ribbon.particle(0, 0).vel.y = -0.00033;
+
+    const int nframes = durationSeconds * sampleRate;
+    float frame[2];
+    for (int i = 0; i < nframes; ++i)
+    {
+        frame[0] = ribbon.particle(20, 0).vel.z;
+        frame[1] = ribbon.particle(20, 1).vel.z;
+        outwave.WriteSamples(frame, 2);
+        ribbon.update(dt * speed);
     }
 
     printf("RibbonAudio: PASS\n");
