@@ -4,8 +4,10 @@
 #include <cmath>
 #include <cassert>
 #include <vector>
+#include "wavefile.hpp"
 #include "rk4_integrator.hpp"
 #include "rk4_simulator.hpp"
+#include "rk4_mesh.hpp"
 
 using test_func_t = int (*)();
 
@@ -20,6 +22,7 @@ static int Logarithm();
 static int Pendulum();
 static int SolarSystem();
 static int Catenary();
+static int RibbonAudio();
 
 
 static Test TestList[] =
@@ -27,7 +30,8 @@ static Test TestList[] =
     { "log",        Logarithm   },
     { "pendulum",   Pendulum    },
     { "solsys",     SolarSystem },
-    { "catenary",   Catenary    }
+    { "catenary",   Catenary    },
+    { "ribbon",     RibbonAudio },
 };
 
 
@@ -774,3 +778,28 @@ static int Catenary()
     printf("Catenary: PASS\n");
     return 0;
 }
+
+
+//-------------------------------------------------------------------------------------------
+
+
+static int RibbonAudio()
+{
+    // Create a ribbon simulator.
+    RungeKutta::RibbonSimulator sim;
+
+    ScaledWaveFileWriter outwave;
+    const char *outFileName = "output/ribbon.wav";
+    constexpr int sampleRate = 48000;
+    if (!outwave.Open(outFileName, sampleRate, 2))
+    {
+        printf("RibbonAudio: ERROR - cannot create output file: %s\n", outFileName);
+        return 1;
+    }
+
+    printf("RibbonAudio: PASS\n");
+    return 0;
+}
+
+
+//-------------------------------------------------------------------------------------------
