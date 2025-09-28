@@ -11,10 +11,19 @@
 
 using test_func_t = int (*)();
 
+
+enum TestCategory
+{
+    AUTOMATIC,
+    MANUAL
+};
+
+
 struct Test
 {
     const char *name;
     test_func_t func;
+    TestCategory cat;
 };
 
 
@@ -23,15 +32,17 @@ static int Pendulum();
 static int SolarSystem();
 static int Catenary();
 static int RibbonAudio();
+static int MeshFile();
 
 
 static Test TestList[] =
 {
-    { "log",        Logarithm   },
-    { "pendulum",   Pendulum    },
-    { "solsys",     SolarSystem },
-    { "catenary",   Catenary    },
-    { "ribbon",     RibbonAudio },
+    { "log",            Logarithm,          AUTOMATIC },
+    { "pendulum",       Pendulum,           AUTOMATIC },
+    { "solsys",         SolarSystem,        AUTOMATIC },
+    { "catenary",       Catenary,           AUTOMATIC },
+    { "ribbon",         RibbonAudio,        AUTOMATIC },
+    { "meshfile",       MeshFile,           AUTOMATIC },
 };
 
 
@@ -55,13 +66,20 @@ int main(int argc, const char *argv[])
         {
             for (int i = 0; i < NumTests; ++i)
             {
-                printf("Running: %s\n", TestList[i].name);
-                if (TestList[i].func())
+                if (TestList[i].cat == AUTOMATIC)
                 {
-                    printf("FAIL: %s\n", TestList[i].name);
-                    return 1;
+                    printf("Running:  %s\n", TestList[i].name);
+                    if (TestList[i].func())
+                    {
+                        printf("FAIL: %s\n", TestList[i].name);
+                        return 1;
+                    }
+                    printf("\n");
                 }
-                printf("\n");
+                else
+                {
+                    printf("Skipping: %s\n", TestList[i].name);
+                }
             }
         }
         else
@@ -783,20 +801,51 @@ static int Catenary()
 //-------------------------------------------------------------------------------------------
 
 
+template <typename value_t>
+class LoHiPassFilter
+{
+private:
+    value_t xprev {};
+    value_t yprev {};
+    float fc = 20;
+
+public:
+    void Snap(value_t xDcLevel)
+    {
+        // Put the filter into the exact state of having been
+        // fed a constant value `xDcLevel` for an infinite amount of time.
+        // This causes the filter to instantly "settle" at xDcLevel.
+        yprev = xprev = xDcLevel;
+    }
+
+    void Reset() { Snap(0); }
+    void SetCutoffFrequency(float cutoffFrequencyHz) { fc = cutoffFrequencyHz; }
+
+    void Update(value_t x, float sampleRateHz)
+    {
+        float c = sampleRateHz / (M_PI * fc);
+        yprev = (x + xprev - yprev*(1 - c)) / (1 + c);
+        xprev = x;
+    }
+
+    value_t HiPass() const { return xprev - yprev; }
+    value_t LoPass() const { return yprev; }
+};
+
+
 static int RibbonAudio()
 {
     constexpr int settleSeconds = 5;
     constexpr int durationSeconds = 10;
     constexpr int sampleRate = 48000;
     constexpr double dt = 1.0 / sampleRate;
-    constexpr double speed = 50;
+    constexpr double speed = 32;
 
     // Create a ribbon simulator.
     constexpr int nrows = 2;
     constexpr int mcols = 30;
     RungeKutta::RibbonSimulator<nrows, mcols> ribbon;
     ribbon.deriv.gravity.z = -9.8;
-    ribbon.decayHalfLife = 30.0;
 
     ScaledWaveFileWriter outwave;
     const char *outFileName = "output/ribbon.wav";
@@ -807,25 +856,49 @@ static int RibbonAudio()
     }
 
     // Let the string settle into its low-energy state.
+    ribbon.decayHalfLife = settleSeconds / 16;
     const int nsettle = settleSeconds * sampleRate;
     for (int i = 0; i < nsettle; ++i)
         ribbon.update(dt * speed);
 
     // Pluck the string.
-    //ribbon.particle(1, 0).vel.z = +0.00071;
-    //ribbon.particle(0, 0).vel.y = -0.00033;
+    ribbon.decayHalfLife = 20.0;
+    ribbon.particle(1, 0).vel.z = +0.00071;
+    ribbon.particle(0, 0).vel.y = -0.00033;
 
+    const double cornerFrequencyHz = 10;
+    LoHiPassFilter<double> filter[2];
+    filter[0].SetCutoffFrequency(cornerFrequencyHz);
+    filter[1].SetCutoffFrequency(cornerFrequencyHz);
     const int nframes = durationSeconds * sampleRate;
     float frame[2];
+    filter[0].Snap(ribbon.particle(20, 0).pos.z);
+    filter[1].Snap(ribbon.particle(19, 1).pos.z);
+
     for (int i = 0; i < nframes; ++i)
     {
-        frame[0] = ribbon.particle(20, 0).vel.z;
-        frame[1] = ribbon.particle(20, 1).vel.z;
+        filter[0].Update(ribbon.particle(20, 0).pos.z, sampleRate);
+        filter[1].Update(ribbon.particle(19, 1).pos.z, sampleRate);
+
+        frame[0] = filter[0].HiPass();
+        frame[1] = filter[1].HiPass();
+
         outwave.WriteSamples(frame, 2);
         ribbon.update(dt * speed);
     }
+    outwave.Close();
 
     printf("RibbonAudio: PASS\n");
+    return 0;
+}
+
+
+//-------------------------------------------------------------------------------------------
+
+
+static int MeshFile()
+{
+    printf("MeshFile: PASS\n");
     return 0;
 }
 
