@@ -32,7 +32,6 @@ static int Pendulum();
 static int SolarSystem();
 static int Catenary();
 static int RibbonAudio();
-static int MeshFile();
 
 
 static Test TestList[] =
@@ -42,7 +41,6 @@ static Test TestList[] =
     { "solsys",         SolarSystem,        AUTOMATIC },
     { "catenary",       Catenary,           AUTOMATIC },
     { "ribbon",         RibbonAudio,        AUTOMATIC },
-    { "meshfile",       MeshFile,           AUTOMATIC },
 };
 
 
@@ -891,16 +889,5 @@ static int RibbonAudio()
     printf("RibbonAudio: PASS\n");
     return 0;
 }
-
-
-//-------------------------------------------------------------------------------------------
-
-
-static int MeshFile()
-{
-    printf("MeshFile: PASS\n");
-    return 0;
-}
-
 
 //-------------------------------------------------------------------------------------------
